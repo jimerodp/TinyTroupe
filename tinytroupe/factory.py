@@ -103,7 +103,57 @@ class TinyPersonFactory(TinyFactory):
         self.context_text = context_text
         self.generated_minibios = [] # keep track of the generated persons. We keep the minibio to avoid generating the same person twice.
         self.generated_names = []
+        self.conversation_history = []
 
+    def should_end_conversation(self, response:str) -> bool:
+        """
+        Analyze whether a conversation should end based on response patterns.
+
+        Args:
+            response (str): The response from the TinyPerson
+
+        Returns:
+            bool: True if conversation should end, False otherwise
+        """
+        response_lower = response.lower()
+        
+        # Explicit end indicators
+        end_phrases = [
+            "goodbye", "thank you for your time", "that's all",
+            "i have nothing more to add", "this concludes"
+        ]
+        if any(phrase in response_lower for phrase in end_phrases):
+            return True
+
+        # Check for completion patterns in recent responses
+        if len(self.conversation_history) > 3:
+            recent_responses = self.conversation_history[-3:]
+            # Short responses without questions indicate diminishing engagement
+            if all(len(r) < 50 and "?" not in r for r in recent_responses):
+                return True
+
+        return False
+
+    def process_response(self, response:str) -> dict:
+        """
+        Process and analyze a response from a TinyPerson.
+
+        Args:
+            response (str): The response to process
+
+        Returns:
+            dict: Contains processed response and end status
+        """
+        self.conversation_history.append(response)
+        should_end = self.should_end_conversation(response)
+        
+        return {
+            "response": response,
+            "should_end": should_end
+        }
+
+    # Original methods continue below...
+    
     @staticmethod
     def generate_person_factories(number_of_factories, generic_context_text):
         """
@@ -272,4 +322,3 @@ class TinyPersonFactory(TinyFactory):
                 agent.define(key, value)
         
         # does not return anything, as we don't want to cache the agent object itself.
-    
